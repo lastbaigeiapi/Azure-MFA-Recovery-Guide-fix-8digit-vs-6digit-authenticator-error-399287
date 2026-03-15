@@ -107,3 +107,4 @@ az ad app delete --id $APP_ID
 - [Authenticator generates 8 digits and Azure requires 6 digits](https://learn.microsoft.com/en-us/answers/questions/5554083/authenticator-generates-8-digits-and-azure-require)
 - [Azure wants 6 digits code but Authenticator generates 8 digits](https://learn.microsoft.com/en-us/answers/questions/2237947/azure-wants-6-digits-code-but-authenticator-genera)
 - [Azure Portal login - 8-digit code but Azure requires 6-digit code](https://learn.microsoft.com/en-my/answers/questions/5811499/azure-portal-login-authenticator-generates-8-digit)
+- [Authenticator验证陷入了死循环](https://learn.microsoft.com/zh-cn/answers/questions/5360566/authenticator)
