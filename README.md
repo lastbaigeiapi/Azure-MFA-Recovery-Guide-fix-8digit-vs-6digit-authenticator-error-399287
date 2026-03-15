@@ -26,7 +26,7 @@
 - Azure CLI（`az`）仍处于登录状态
 - 账户拥有 Global Administrator 角色
 
-## 解决步骤
+## 解决步骤（只需三步）
 
 ### 第一步：创建临时应用获取 Graph API 权限
 
@@ -75,6 +75,12 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   "https://graph.microsoft.com/v1.0/users/$USER_ID/authentication/microsoftAuthenticatorMethods/<method-id>"
 ```
 
+> **如何找到你的 TENANT_ID 和 USER_ID：**
+> ```bash
+> az account show --query tenantId -o tsv
+> az ad signed-in-user show --query id -o tsv
+> ```
+
 ### 第三步：登录并用 Google Authenticator 重新注册
 
 1. 打开 Azure Portal，输入邮箱和密码
@@ -82,61 +88,19 @@ curl -X DELETE -H "Authorization: Bearer $TOKEN" \
 3. **关键：点击"设置其他身份验证应用"**
 4. 系统会显示一个标准 TOTP 二维码（6 位验证码）
 5. 用 **Google Authenticator** 扫码完成注册
+6. 登录成功
 
 > Google Authenticator 使用标准 TOTP 协议，生成的是 6 位验证码，与 Azure AD 工作/学校账户要求一致。
 
-### 第四步：清理
+### 清理
 
 ```bash
 az ad app delete --id $APP_ID
 ```
 
-## 如果第三步遇到 MFA 死循环
-
-如果系统要求"先完成 MFA 验证才能注册新的 MFA"，需要额外操作：
-
-```bash
-# 查找 Policy.ReadWrite.AuthenticationMethod 权限 ID
-PERM_ID=$(az ad sp list \
-  --filter "appId eq '00000003-0000-0000-c000-000000000000'" \
-  --query "[0].appRoles[?value=='Policy.ReadWrite.AuthenticationMethod'].id" -o tsv)
-
-# 授予权限
-az rest --method POST \
-  --url "https://graph.microsoft.com/v1.0/servicePrincipals/$SP_ID/appRoleAssignments" \
-  --body "{
-    \"principalId\":\"$SP_ID\",
-    \"resourceId\":\"$GRAPH_SP_ID\",
-    \"appRoleId\":\"$PERM_ID\"
-  }"
-
-# 重新获取令牌（同第二步）
-
-# 启用 Temporary Access Pass 策略
-curl -X PATCH -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"@odata.type":"#microsoft.graph.temporaryAccessPassAuthenticationMethodConfiguration","state":"enabled","includeTargets":[{"targetType":"group","id":"all_users"}]}' \
-  "https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/TemporaryAccessPass"
-
-# 创建临时通行证
-curl -s -X POST -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"lifetimeInMinutes": 480, "isUsableOnce": false}' \
-  "https://graph.microsoft.com/v1.0/users/$USER_ID/authentication/temporaryAccessPassMethods"
-```
-
-用返回的通行证完成 MFA 验证，然后按第三步注册 Google Authenticator。
-
 ## 总结
 
-| 步骤 | 操作 |
-|------|------|
-| 1 | 通过 Azure CLI 创建临时应用，获取 Graph API 权限 |
-| 2 | 调用 Graph API 删除旧的 Microsoft Authenticator |
-| 3 | 登录时选"设置其他身份验证应用"，用 Google Authenticator 扫码 |
-| 4 | 清理临时应用 |
-
-**最简路径：删除旧 MFA → 登录 → 选"设置其他身份验证应用" → Google Authenticator 扫码。**
+**删除旧 MFA → 登录 → 选"设置其他身份验证应用" → Google Authenticator 扫码。完事。**
 
 ## 参考链接
 
